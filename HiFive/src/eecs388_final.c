@@ -20,6 +20,13 @@ void auto_brake(int devid)
             dist = ((byte4 << 8) | byte3);
             ser_printf("%u", dist);
             if(dist < 75){
+            
+
+
+
+
+
+                
             gpio_led_write(RED_LED, ON);
             gpio_led_write(GREEN_LED, OFF);
         }
