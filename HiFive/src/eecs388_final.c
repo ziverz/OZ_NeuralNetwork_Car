@@ -9,6 +9,28 @@ void auto_brake(int devid)
     // Task1 & 2: 
     // Your code here (Use Lab 02 - Lab 04 for reference)
     // Use the directions given in the project document
+    uint16_t dist = 0; /* LIDAR distance data is 16 bits. */
+    ser_printline("Setup completed.");
+    ser_write( '\n' );
+    
+    while( 1 ) {
+        if ('Y' == ser_read(devid) && 'Y' == ser_read(devid)) {
+            uint8_t byte3 = ser_read(devid); // low dist
+            uint16_t byte4 = ser_read(devid); // high dist
+            dist = ((byte4 << 8) | byte3);
+            ser_printf("%u", dist);
+            if(dist < 75){
+            gpio_led_write(RED_LED, ON);
+            gpio_led_write(GREEN_LED, OFF);
+        }
+            else {
+            gpio_led_write(RED_LED, OFF);
+            gpio_led_write(GREEN_LED, ON);
+        }
+        }
+        
+    }
+    return;
 }
 
 int read_from_pi(int devid)
