@@ -109,8 +109,10 @@ while(1):
 		tot_time  = (pred_end - cam_start)*1000
 
 		print('pred: {:0.2f} deg. took: {:0.2f} ms | cam={:0.2f} prep={:0.2f} pred={:0.2f}'.format(deg, tot_time, cam_time, prep_time, pred_time))
-		ser = serial.Serial("ttyAMA1", 115200)
-		
+		# Ziv: This is where I'm lost!
+		# ser = serial.Serial("ttyAMA1", 115200)
+		# ser.write(bytes(deg))
+
 		
 		#Don't include the timings for the first frame due to cache warmup
 		if first_frame:
