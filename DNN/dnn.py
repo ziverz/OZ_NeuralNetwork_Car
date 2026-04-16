@@ -2,7 +2,10 @@
 from __future__ import division
 
 # Imports
-import tensorflow as tf
+#import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 model = __import__("model")
 import cv2
 import sys
@@ -12,7 +15,7 @@ import math
 import numpy as np
 import serial
 
-ser1 = serial.Serial("/dev/ttyAMA1", 115200)
+ser1 = serial.Serial("/dev/ttyAMA2", 115200)
 
 # Radian <-> Degree conversion functions
 def deg2rad(deg):
@@ -106,6 +109,7 @@ while(1):
 		tot_time  = (pred_end - cam_start)*1000
 
 		print('pred: {:0.2f} deg. took: {:0.2f} ms | cam={:0.2f} prep={:0.2f} pred={:0.2f}'.format(deg, tot_time, cam_time, prep_time, pred_time))
+		ser = serial.Serial(“<path to connection file>", baudrate)
 		
 		#Don't include the timings for the first frame due to cache warmup
 		if first_frame:
