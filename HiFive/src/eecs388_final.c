@@ -60,7 +60,7 @@ void auto_brake(int devid)
             // Flashing Red
             gpio_write(GREEN_LED, OFF);
             gpio_write(RED_LED, ON);
-            printf("Brake\n");
+            printf("Brake \n");
             delay(100);
             gpio_write(RED_LED, OFF);
             delay(100);
