@@ -95,7 +95,20 @@ int read_from_pi(int devid)
 // Task 4
 void steering(int gpio, int pos)
 {
-    
+    // Clamp angle to [0, 180]
+    if (pos < 0)   pos = 0;
+    if (pos > 180) pos = 180;
+
+    // pulse width 0.5ms at 0 deg and 2.5ms at 180 deg
+    int pulse_us = 500 + (pos * 2000 / 180);
+
+    // total period is 20ms
+    int low_us = 20000 - pulse_us;
+
+    gpio_write(gpio, ON);
+    delay_usec(pulse_us);
+    gpio_write(gpio, OFF);
+    delay_usec(low_us);
 }
 
 
