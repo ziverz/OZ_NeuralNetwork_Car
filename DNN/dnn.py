@@ -15,7 +15,7 @@ import math
 import numpy as np
 import serial
 
-ser1 = serial.Serial("/dev/ttyAMA2", 115200)
+ser1 = serial.Serial("/dev/ttyAMA1", 115200)
 
 # Radian <-> Degree conversion functions
 def deg2rad(deg):
@@ -109,9 +109,9 @@ while(1):
 		tot_time  = (pred_end - cam_start)*1000
 
 		print('pred: {:0.2f} deg. took: {:0.2f} ms | cam={:0.2f} prep={:0.2f} pred={:0.2f}'.format(deg, tot_time, cam_time, prep_time, pred_time))
-		# Ziv: This is where I'm lost!
-		# ser = serial.Serial("ttyAMA1", 115200)
-		# ser.write(bytes(deg))
+		# Task 3: Send the control output to the HiFive board over the serial connection
+		ser = serial.Serial("ttyAMA1", 115200)
+		ser.write(bytes(deg))
 
 		
 		#Don't include the timings for the first frame due to cache warmup
