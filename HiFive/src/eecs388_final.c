@@ -77,7 +77,7 @@ int read_from_pi(int devid)
     // Read characters until newline or buffer full
     while (i < (int)(sizeof(buf) - 1)) {
         c = ser_read(devid);
-        if (c == '\n' || c == '\r') {
+        if (c == '\n' || c == '\r') { // read the data until new line character
             break;
         }
         buf[i++] = c;
@@ -86,7 +86,7 @@ int read_from_pi(int devid)
 
     int angle = 0;
     float f = 0.0f;
-    if (sscanf(buf, "%f", &f) == 1) {
+    if (sscanf(buf, "%f", &f) == 1) { // convert text into number
         angle = (int)f;
     }
     return angle;
@@ -95,7 +95,7 @@ int read_from_pi(int devid)
 // Task 4
 void steering(int gpio, int pos)
 {
-    // Clamp angle to [0, 180]
+    // make sure it cant go past these angles
     if (pos < 0)   pos = 0;
     if (pos > 180) pos = 180;
 
@@ -139,10 +139,11 @@ int main()
         auto_brake(lidar_to_hifive);
 
         // Task 3
-        // int angle = read_from_pi(pi_to_hifive);
-        // printf("Angle: %d\n", angle);
+        int angle = read_from_pi(pi_to_hifive);
+        printf("Angle: %d\n", angle);
 
         // Task 4
+		steering(PIN_19, angle);
     }
 
     return 0;
