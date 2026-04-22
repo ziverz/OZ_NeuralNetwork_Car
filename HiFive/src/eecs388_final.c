@@ -70,7 +70,26 @@ void auto_brake(int devid)
 // Task 3
 int read_from_pi(int devid)
 {
-   
+    char buf[32];
+    int i = 0;
+    char c;
+
+    // Read characters until newline or buffer full
+    while (i < (int)(sizeof(buf) - 1)) {
+        c = ser_read(devid);
+        if (c == '\n' || c == '\r') {
+            break;
+        }
+        buf[i++] = c;
+    }
+    buf[i] = '\0';
+
+    int angle = 0;
+    float f = 0.0f;
+    if (sscanf(buf, "%f", &f) == 1) {
+        angle = (int)f;
+    }
+    return angle;
 }
 
 // Task 4
