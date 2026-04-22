@@ -2,10 +2,7 @@
 from __future__ import division
 
 # Imports
-#import tensorflow as tf
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
-
+import tensorflow as tf
 model = __import__("model")
 import cv2
 import sys
@@ -97,8 +94,6 @@ while(1):
 			pass
 			#Your code here.
 			ser1.write(bytes(str(int(deg)) + '\n', 'utf-8'))
-
-		
         
         
 		pred_end   = time.time()
@@ -110,9 +105,6 @@ while(1):
 		tot_time  = (pred_end - cam_start)*1000
 
 		print('pred: {:0.2f} deg. took: {:0.2f} ms | cam={:0.2f} prep={:0.2f} pred={:0.2f}'.format(deg, tot_time, cam_time, prep_time, pred_time))
-		# Task 3: Send the control output to the HiFive board over the serial connection
-
-
 		
 		#Don't include the timings for the first frame due to cache warmup
 		if first_frame:
