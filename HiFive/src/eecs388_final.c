@@ -4,106 +4,90 @@
 #include <stdarg.h>
 #include "eecs388_lib.h"
 
-void ser_printf(const char *format, ...) {
-    char buffer[128];
+#define LED_GREEN        0
+#define LED_YELLOW       1
+#define LED_RED          2
+#define LED_FLASHING_RED 3
 
-    va_list args;
+static int led_state = LED_GREEN;
+static int flash_on  = 0;
 
-	va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-
-    const char *p = buffer;
-    while (*p) {
-        ser_write(1, *p++);
-    }
-
-    ser_write(1, '\n');
-    ser_write(1, '\r');
-}
-
-void auto_brake(int devid)
+// task 1 & 2
+int auto_brake(int devid)
 {
-    uint16_t dist = 0;
-    if (ser_read(devid) == 'Y' && ser_read(devid) == 'Y') {
+    while (ser_isready(devid) & 0x2) {
+        uint8_t b1 = (uint8_t)ser_read(devid);
+        if (b1 != 'Y') continue;
 
-        uint8_t low = ser_read(devid);
-        uint8_t high = ser_read(devid);
-        
-        // Read unused variables
-        uint16_t str_l = ser_read(devid); 
-        uint16_t str_h = ser_read(devid); 
-        uint16_t rsvd = ser_read(devid); 
-        uint16_t qlty = ser_read(devid); 
-        uint16_t chksm = ser_read(devid);
+        uint8_t b2 = (uint8_t)ser_read(devid);
+        if (b2 != 'Y') continue;
 
-        dist = (high << 8) | low;
+        uint8_t low  = (uint8_t)ser_read(devid);
+        uint8_t high = (uint8_t)ser_read(devid);
+        ser_read(devid);
+        ser_read(devid);
+        ser_read(devid);
+        ser_read(devid);
+        ser_read(devid);
+
+        uint16_t dist = (high << 8) | low;
+
+        if (dist > 1200) continue;
         printf("Distance: %d\n", dist);
-
-        if (dist > 200) {
-            // Green
-            gpio_write(GREEN_LED, ON);
-            gpio_write(RED_LED, OFF);
-        }
-        else if (dist > 100) {
-            // Yellow
-            gpio_write(GREEN_LED, ON);
-            gpio_write(RED_LED, ON);
-        }
-        else if (dist > 60) {
-            // Red
-            gpio_write(GREEN_LED, OFF);
-            gpio_write(RED_LED, ON);
-        }
-        else {
-            // Flashing Red
-            gpio_write(GREEN_LED, OFF);
-            gpio_write(RED_LED, ON);
-            printf("Brake\n");
-            delay(100);
-            gpio_write(RED_LED, OFF);
-            delay(100);
-        }
+        if (dist > 200)      led_state = LED_GREEN;
+        else if (dist > 100) led_state = LED_YELLOW;
+        else if (dist > 60)  led_state = LED_RED;
+        else if (dist > 0)   led_state = LED_FLASHING_RED;
+        return 1;
     }
+    return 0;
 }
 
-// Task 3
+// task 3
 int read_from_pi(int devid)
 {
-    char buf[32];
-    int i = 0;
-    char c;
+    static char buf[32];
+    static int idx = 0;
 
-    // Read characters until newline or buffer full
-    while (i < (int)(sizeof(buf) - 1)) {
-        c = ser_read(devid);
-        if (c == '\n' || c == '\r') { // read the data until new line character
-            break;
+    if (!(ser_isready(devid) & 0x2)) return -1;
+
+    int c = (unsigned char)ser_read(devid);
+
+    if (c == '\r') return -1;
+
+    if (c == '\n') {
+        buf[idx] = '\0';
+        idx = 0;
+
+        if (buf[0] == '\0') return -1;
+
+        int angle;
+        if (sscanf(buf, "%d", &angle) == 1) {
+            if (angle < -360 || angle > 360) return -1;
+            return angle;
         }
-        buf[i++] = c;
+        return -1;
     }
-    buf[i] = '\0';
 
-    int angle = 0;
-    float f = 0.0f;
-    if (sscanf(buf, "%f", &f) == 1) { // convert text into number
-        angle = (int)f;
+    if ((c >= '0' && c <= '9') || (c == '-' && idx == 0)) {
+        if (idx < 31) {
+            buf[idx++] = (char)c;
+        }
+    } else {
+        idx = 0;
     }
-    return angle;
+
+    return -1;
 }
 
-// Task 4
+// task 4
 void steering(int gpio, int pos)
 {
-    // make sure it cant go past these angles
     if (pos < 0)   pos = 0;
     if (pos > 180) pos = 180;
 
-    // pulse width 0.5ms at 0 deg and 2.5ms at 180 deg
-    int pulse_us = 500 + (pos * 2000 / 180);
-
-    // total period is 20ms
-    int low_us = 20000 - pulse_us;
+    uint32_t pulse_us = 544 + ((uint32_t)pos * (2400 - 544) / 180);
+    uint32_t low_us   = 20000 - pulse_us;
 
     gpio_write(gpio, ON);
     delay_usec(pulse_us);
@@ -111,40 +95,75 @@ void steering(int gpio, int pos)
     delay_usec(low_us);
 }
 
+// function to simplify led writing
+void update_leds()
+{
+    switch (led_state) {
+        case LED_GREEN:
+            gpio_write(GREEN_LED, ON);
+            gpio_write(RED_LED, OFF);
+            break;
+        case LED_YELLOW:
+            gpio_write(GREEN_LED, ON);
+            gpio_write(RED_LED, ON);
+            break;
+        case LED_RED:
+            gpio_write(GREEN_LED, OFF);
+            gpio_write(RED_LED, ON);
+            break;
+        case LED_FLASHING_RED:
+            gpio_write(GREEN_LED, OFF);
+            gpio_write(RED_LED, flash_on ? ON : OFF);
+            flash_on = !flash_on;
+            break;
+    }
+}
 
+// main
 int main()
 {
-    // UART setup
-    ser_setup(0); // Lidar
-    ser_setup(1); // Raspberry Pi
+    ser_setup(0);
+    ser_setup(1);
 
-    int pi_to_hifive = 1;
-    int lidar_to_hifive = 0;
+    int lidar_uart = 0;
+    int pi_uart    = 1;
+    int servo_pin  = PIN_19;
 
-    printf("\nUsing UART %d for Pi -> HiFive", pi_to_hifive);
-    printf("\nUsing UART %d for Lidar -> HiFive", lidar_to_hifive);
-
-    // GPIO setup
-    gpio_mode(PIN_19, OUTPUT); // Servo
+    gpio_mode(servo_pin, OUTPUT);
     gpio_mode(RED_LED, OUTPUT);
     gpio_mode(BLUE_LED, OUTPUT);
     gpio_mode(GREEN_LED, OUTPUT);
 
-    printf("\nSetup completed.\n");
-    printf("Begin main loop.\n");
+    printf("System Initialized\n");
+
+    int last_angle = 90;
+    uint64_t last_flash_time = get_cycles();
+    uint64_t cycles_100ms = (uint64_t)32768 * 100 / 1000;
 
     while (1) {
+        // Task 1 & 2: drain all available LiDAR bytes
+        auto_brake(lidar_uart);
 
-        // Task 1 & 2
-        auto_brake(lidar_to_hifive);
+        // Task 3: read Pi angle if available
+        if (ser_isready(pi_uart) & 0x2) {
+            int angle = read_from_pi(pi_uart);
+            if (angle != -1) {
+                if (angle < 0)        last_angle = 0;
+                else if (angle > 180) last_angle = 180;
+                else                  last_angle = angle;
+                printf("Angle: %d\n", last_angle);
+            }
+        }
 
-        // Task 3
-        int angle = read_from_pi(pi_to_hifive);
-        printf("Angle: %d\n", angle);
+        // Task 4: one PWM pulse per loop iteration
+        steering(servo_pin, last_angle);
 
-        // Task 4
-		steering(PIN_19, angle);
+        // Update LEDs every 100ms without blocking
+        uint64_t now = get_cycles();
+        if ((now - last_flash_time) >= cycles_100ms) {
+            update_leds();
+            last_flash_time = now;
+        }
     }
-
     return 0;
 }
